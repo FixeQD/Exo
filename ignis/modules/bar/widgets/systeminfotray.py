@@ -1,8 +1,10 @@
 import asyncio
 from ignis import widgets
 from ignis.services.system_tray import SystemTrayService, SystemTrayItem
-from ignis.services.network import NetworkService
-from ignis.services.bluetooth import BluetoothService
+from modules.shared_modules.optional_services import (
+    get_bluetooth_service,
+    get_network_service,
+)
 from ignis.services.audio import AudioService
 from ignis.window_manager import WindowManager
 from gi.repository import Gtk
@@ -110,8 +112,8 @@ class SystemInfoTray:
         self.tray_widget = Tray()
         self.battery_widget = Battery()
 
-        self.network_service = NetworkService.get_default()
-        self.bluetooth_service = BluetoothService.get_default()
+        self.network_service = get_network_service()
+        self.bluetooth_service = get_bluetooth_service()
         self.audio_service = AudioService.get_default()
 
         self.main_container = widgets.Box(css_classes=["system-info-tray"])
@@ -147,13 +149,19 @@ class SystemInfoTray:
         button_content.append(self.audio_container)
         button_content.append(self.battery_widget.widget())
 
-        self.network_service.wifi.connect("notify::is-connected", self._update_ui)
-        self.network_service.ethernet.connect("notify::is-connected", self._update_ui)
-        self.network_service.vpn.connect("notify::is-connected", self._update_ui)
+        if self.network_service is not None:
+            self.network_service.wifi.connect("notify::is-connected", self._update_ui)
+            self.network_service.ethernet.connect(
+                "notify::is-connected", self._update_ui
+            )
+            self.network_service.vpn.connect("notify::is-connected", self._update_ui)
 
-        self.bluetooth_service.connect("notify::powered", self._update_ui)
-        self.bluetooth_service.connect("notify::connected-devices", self._update_ui)
-        self.bluetooth_service.connect("notify::devices", self._update_ui)
+        if self.bluetooth_service is not None:
+            self.bluetooth_service.connect("notify::powered", self._update_ui)
+            self.bluetooth_service.connect(
+                "notify::connected-devices", self._update_ui
+            )
+            self.bluetooth_service.connect("notify::devices", self._update_ui)
 
         self.audio_service.speaker.connect("notify::is-muted", self._update_ui)
         self.audio_service.speaker.connect("notify::volume", self._update_ui)
@@ -208,6 +216,39 @@ class SystemInfoTray:
         self._update_ui()
 
     def _update_ui(self, *args):
+        if self.network_service is None:
+            self.wifi.set_visible(False)
+        else:
+            self._update_network_ui()
+
+        if self.bluetooth_service is None:
+            self.bluetooth.set_visible(False)
+            return
+
+        found_devices = self.bluetooth_service.devices
+        if found_devices:
+            self.bluetooth.set_visible(True)
+            if self.bluetooth_service.powered:
+                if len(self.bluetooth_service.connected_devices) > 0:
+                    self.bluetooth.set_label("bluetooth_connected")
+                else:
+                    self.bluetooth.set_label("bluetooth")
+            else:
+                self.bluetooth.set_label("bluetooth_disabled")
+        else:
+            self.bluetooth.set_visible(False)
+
+        if self.audio_service.speaker.is_muted:
+            self.audio.set_label("volume_off")
+        else:
+            if self.audio_service.speaker.volume < 33:
+                self.audio.set_label("volume_mute")
+            elif self.audio_service.speaker.volume < 67:
+                self.audio.set_label("volume_down")
+            else:
+                self.audio.set_label("volume_up")
+
+    def _update_network_ui(self):
         network = self.network_service.wifi
         ethernet = self.network_service.ethernet
         if ethernet.is_connected:
@@ -232,28 +273,6 @@ class SystemInfoTray:
         else:
             self.wifi.set_visible(False)
 
-        found_devices = self.bluetooth_service.devices
-        if found_devices:
-            self.bluetooth.set_visible(True)
-            if self.bluetooth_service.powered:
-                if len(self.bluetooth_service.connected_devices) > 0:
-                    self.bluetooth.set_label("bluetooth_connected")
-                else:
-                    self.bluetooth.set_label("bluetooth")
-            else:
-                self.bluetooth.set_label("bluetooth_disabled")
-        else:
-            self.bluetooth.set_visible(False)
-
-        if self.audio_service.speaker.is_muted:
-            self.audio.set_label("volume_off")
-        else:
-            if self.audio_service.speaker.volume < 33:
-                self.audio.set_label("volume_mute")
-            elif self.audio_service.speaker.volume < 67:
-                self.audio.set_label("volume_down")
-            else:
-                self.audio.set_label("volume_up")
 
     def widget(self):
         return self.main_container

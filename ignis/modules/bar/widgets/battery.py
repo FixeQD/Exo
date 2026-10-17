@@ -1,13 +1,13 @@
 import asyncio
 from ignis import widgets
-from ignis.services.upower import UPowerService
+from modules.shared_modules.optional_services import get_upower_service
 from gi.repository import Gtk
 from user_settings import user_settings
 
 
 class Battery:
     def __init__(self):
-        self.upowerservice = UPowerService.get_default()
+        self.upowerservice = get_upower_service()
         self.battery = None
         self.connected_signals = False
 
@@ -34,7 +34,8 @@ class Battery:
         self.container.append(self.battery_box)
         self.container.set_visible(False)
 
-        self.upowerservice.connect("notify::batteries", self._on_batteries_changed)
+        if self.upowerservice is not None:
+            self.upowerservice.connect("notify::batteries", self._on_batteries_changed)
 
         asyncio.create_task(self._initial_setup())
         self.update_layout()
@@ -44,6 +45,8 @@ class Battery:
         self._on_batteries_changed(None, None)
 
     def _on_batteries_changed(self, service, prop):
+        if self.upowerservice is None:
+            return
         if self.upowerservice.batteries:
             self.battery = self.upowerservice.batteries[0]
             if not self.connected_signals:

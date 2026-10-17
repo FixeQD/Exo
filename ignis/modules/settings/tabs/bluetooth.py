@@ -2,7 +2,7 @@ import asyncio
 import subprocess
 import os
 from ignis import widgets
-from ignis.services.bluetooth import BluetoothService
+from modules.shared_modules.optional_services import get_bluetooth_service
 from modules.m3components import Button
 from modules.settings.widgets import CategoryLabel, SettingsRow, SwitchRow
 from scripts import send_notification
@@ -10,7 +10,26 @@ from scripts import send_notification
 
 class BluetoothTab(widgets.Box):
     def __init__(self):
-        self.bluetooth_service = BluetoothService.get_default()
+        self.bluetooth_service = get_bluetooth_service()
+        if self.bluetooth_service is None:
+            super().__init__(
+                vertical=True,
+                spacing=20,
+                css_classes=["settings-body"],
+                hexpand=False,
+                halign="center",
+                width_request=800,
+                child=[
+                    CategoryLabel("Bluetooth"),
+                    widgets.Label(
+                        label="Bluetooth management requires gnome-bluetooth, which is not available.",
+                        css_classes=["settings-description"],
+                        wrap=True,
+                    ),
+                ],
+            )
+            return
+
 
         if self.bluetooth_service.state == "absent":
             super().__init__(

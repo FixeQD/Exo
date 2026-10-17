@@ -1,5 +1,6 @@
 import os
 
+from config_paths import config_path
 from ignis.utils import Utils
 from ignis.command_manager import CommandManager
 from ignis.css_manager import CssInfoPath, CssManager
@@ -28,7 +29,7 @@ css_manager.widgets_style_priority = "user"
 css_manager.apply_css(
     CssInfoPath(
         name="main",
-        path=os.path.expanduser("~/.config/ignis/styles/main.scss"),
+        path=config_path("ignis", "styles", "main.scss"),
         compiler_function=lambda path: utils.sass_compile(path=path),
         priority="user",
     )
@@ -36,7 +37,7 @@ css_manager.apply_css(
 css_manager.apply_css(
     CssInfoPath(
         name="colors",
-        path=os.path.expanduser("~/.config/ignis/colors.scss"),
+        path=config_path("ignis", "colors.scss"),
         compiler_function=lambda path: utils.sass_compile(path=path),
         priority="user",
     )
@@ -45,7 +46,7 @@ if not user_settings.appearance.wallcolors.dark_mode:
     css_manager.apply_css(
         CssInfoPath(
             name="lightthemeoverrides",
-            path=os.path.expanduser("~/.config/ignis/styles/lightthemeoverrides.scss"),
+            path=config_path("ignis", "styles", "lightthemeoverrides.scss"),
             compiler_function=lambda path: utils.sass_compile(path=path),
             priority="user",
         )

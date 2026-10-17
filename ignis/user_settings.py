@@ -1,16 +1,41 @@
 import os
+import shutil
+
 from ignis import utils
 from ignis.app import IgnisApp
 from ignis.options_manager import OptionsGroup, OptionsManager, TrackedList
 from ignis.window_manager import WindowManager
+from config_paths import config_path, state_path
 
 window_manager = WindowManager.get_default()
 app = IgnisApp.get_initialized()
 
+# Where the shell keeps its writable copy: the configuration directory can be a
+# read-only Nix store link, so state lives in XDG_STATE_HOME instead.
+settings_file = state_path("exo", "user_settings.json")
+
+# Optional seed written by the Nix module, used only on the first start.
+seed_file = config_path("ignis", "user_settings.json")
+
+
+def seed_settings() -> None:
+    """Create the writable settings file from the Nix seed when it is missing."""
+
+    if not os.path.exists(seed_file):
+        return
+    if os.path.exists(settings_file) and os.environ.get(
+        "EXO_RESET_USER_SETTINGS"
+    ) not in ("1", "true", "yes"):
+        return
+
+    os.makedirs(os.path.dirname(settings_file), exist_ok=True)
+    shutil.copyfile(seed_file, settings_file)
+
 
 class UserSettings(OptionsManager):
     def __init__(self):
-        super().__init__(file=os.path.expanduser("~/.config/ignis/user_settings.json"))
+        seed_settings()
+        super().__init__(file=settings_file)
 
     class Appearance(OptionsGroup):
         class WallpaperColors(OptionsGroup):

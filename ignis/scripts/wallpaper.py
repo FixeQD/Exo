@@ -1,6 +1,7 @@
 import os
 import asyncio
 import json
+from config_paths import config_path
 from ignis import utils
 from user_settings import user_settings
 from .send_notification import send_notification
@@ -9,6 +10,14 @@ from ignis.command_manager import CommandManager
 
 css_manager = CssManager.get_default()
 command_manager = CommandManager.get_default()
+
+
+def _hex(value) -> str:
+    """Matugen returns either a hex string or a `{"color": ...}` object."""
+
+    if isinstance(value, dict):
+        value = value.get("color", "")
+    return str(value).strip()
 
 
 class Wallpaper:
@@ -105,9 +114,7 @@ class Wallpaper:
                 css_manager.apply_css(
                     CssInfoPath(
                         name="lightthemeoverrides",
-                        path=os.path.expanduser(
-                            "~/.config/ignis/styles/lightthemeoverrides.scss"
-                        ),
+                        path=config_path("ignis", "styles", "lightthemeoverrides.scss"),
                         compiler_function=lambda path: utils.sass_compile(path=path),
                         priority="user",
                     )
@@ -166,17 +173,24 @@ class Wallpaper:
 
             scss_content = ""
 
-            tasks_palette = []
-            for scheme in schemes:
-                command = f"matugen image -t scheme-{scheme} '{path}' -m {current_mode} --json hex --dry-run"
-                tasks_palette.append(utils.exec_sh_async(command))
+            commands = [
+                f"matugen image -t scheme-{scheme} '{path}' -m {current_mode} --json hex --dry-run"
+                for scheme in schemes
+            ] + [
+                f"matugen image -t scheme-{current_scheme} '{path}' -m {mode} --json hex --dry-run"
+                for mode in ["light", "dark"]
+            ]
 
-            tasks_theme = []
-            for mode in ["light", "dark"]:
-                command = f"matugen image -t scheme-{current_scheme} '{path}' -m {mode} --json hex --dry-run"
-                tasks_theme.append(utils.exec_sh_async(command))
+            all_results = await asyncio.gather(
+                *(utils.exec_sh_async(command) for command in commands)
+            )
 
-            all_results = await asyncio.gather(*(tasks_palette + tasks_theme))
+            all_results = [
+                result
+                if result.stdout
+                else await utils.exec_sh_async(f"{command} --prefer=saturation")
+                for command, result in zip(commands, all_results)
+            ]
 
             results_palette = all_results[: len(schemes)]
             results_theme = all_results[len(schemes) :]
@@ -194,7 +208,9 @@ class Wallpaper:
                                 variable_name = (
                                     f"palette-{scheme}-{color_name.replace('_', '-')}"
                                 )
-                                scss_content += f"${variable_name}: {color_value};\n"
+                                scss_content += (
+                                    f"${variable_name}: {_hex(color_value)};\n"
+                                )
                         # matugen-git (as of r107.ga49399b)
                         else:
                             for color_name, values in data["colors"].items():
@@ -202,7 +218,7 @@ class Wallpaper:
                                     color_value = values[current_mode]
                                     variable_name = f"palette-{scheme}-{color_name.replace('_', '-')}"
                                     scss_content += (
-                                        f"${variable_name}: {color_value};\n"
+                                        f"${variable_name}: {_hex(color_value)};\n"
                                     )
                     except json.JSONDecodeError as e:
                         stderr = result.stderr if result.stderr else ""
@@ -222,7 +238,9 @@ class Wallpaper:
                                 variable_name = (
                                     f"theme-{mode}-{color_name.replace('_', '-')}"
                                 )
-                                scss_content += f"${variable_name}: {color_value};\n"
+                                scss_content += (
+                                    f"${variable_name}: {_hex(color_value)};\n"
+                                )
                         # matugen-git (as of r107.ga49399b)
                         else:
                             for color_name, values in data["colors"].items():
@@ -232,7 +250,7 @@ class Wallpaper:
                                         f"theme-{mode}-{color_name.replace('_', '-')}"
                                     )
                                     scss_content += (
-                                        f"${variable_name}: {color_value};\n"
+                                        f"${variable_name}: {_hex(color_value)};\n"
                                     )
                     except json.JSONDecodeError as e:
                         stderr = result.stderr if result.stderr else ""
@@ -242,11 +260,12 @@ class Wallpaper:
                         pass
             if not scss_content:
                 return
-            scss_file_path = os.path.expanduser(
-                "~/.config/ignis/styles/preview-colors.scss"
-            )
-            os.makedirs(os.path.dirname(scss_file_path), exist_ok=True)
-            with open(scss_file_path, "w") as f:
+            scss_file_path = config_path("ignis", "styles", "preview-colors.scss")
+            directory = os.path.dirname(scss_file_path)
+            os.makedirs(directory, exist_ok=True)
+            tmp_file = os.path.join(directory, ".preview-colors.scss.tmp")
+            with open(tmp_file, "w") as f:
                 f.write(scss_content)
+            os.replace(tmp_file, scss_file_path)
 
         asyncio.create_task(do_generate())

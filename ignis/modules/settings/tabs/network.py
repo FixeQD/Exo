@@ -2,7 +2,7 @@ import asyncio
 import subprocess
 import os
 from ignis import widgets
-from ignis.services.network import NetworkService
+from modules.shared_modules.optional_services import get_network_service
 from modules.m3components import Button
 from modules.settings.widgets import CategoryLabel, SettingsRow, SwitchRow
 from scripts import send_notification
@@ -19,7 +19,17 @@ class NetworkTab(widgets.Box):
             width_request=800,
         )
 
-        self.network_service = NetworkService.get_default()
+        self.network_service = get_network_service()
+        if self.network_service is None:
+            self.append(CategoryLabel("Network"))
+            self.append(
+                widgets.Label(
+                    label="Network management requires NetworkManager, which is not available.",
+                    css_classes=["settings-description"],
+                    wrap=True,
+                )
+            )
+            return
 
         self.network_category = self.create_network_category()
 

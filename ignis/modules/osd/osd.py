@@ -1,7 +1,9 @@
 import asyncio
 from ignis import widgets
-from ignis.services.audio import AudioService
-from ignis.services.backlight import BacklightService
+from modules.shared_modules.optional_services import (
+    get_audio_service,
+    get_backlight_service,
+)
 from ignis.window_manager import WindowManager
 from user_settings import user_settings
 
@@ -53,12 +55,14 @@ class OSD(widgets.RevealerWindow):
 
         self.connect("notify::visible", self._toggle_revealer)
 
-        self.audio = AudioService.get_default()
-        self.backlight = BacklightService.get_default()
+        self.audio = get_audio_service()
+        self.backlight = get_backlight_service()
 
-        self.audio.speaker.connect("notify::volume", self._on_volume_changed)
-        self.audio.speaker.connect("notify::is-muted", self._on_volume_changed)
-        self.backlight.connect("notify::brightness", self._on_brightness_changed)
+        if self.audio is not None:
+            self.audio.speaker.connect("notify::volume", self._on_volume_changed)
+            self.audio.speaker.connect("notify::is-muted", self._on_volume_changed)
+        if self.backlight is not None:
+            self.backlight.connect("notify::brightness", self._on_brightness_changed)
         user_settings.services.osd.connect_option(
             "anchor", lambda: self.update_layout()
         )
@@ -68,8 +72,10 @@ class OSD(widgets.RevealerWindow):
 
         self.update_layout()
 
-        self._on_volume_changed(self.audio.speaker)
-        self._on_brightness_changed(self.backlight)
+        if self.audio is not None:
+            self._on_volume_changed(self.audio.speaker)
+        if self.backlight is not None:
+            self._on_brightness_changed(self.backlight)
 
     def _toggle_revealer(self, *_):
         self.revealer.reveal_child = self.visible

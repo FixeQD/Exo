@@ -1,12 +1,14 @@
 import asyncio
 from gi.repository import GLib
 from ignis import widgets
-from ignis.services.audio import AudioService
-from ignis.services.backlight import BacklightService
+from modules.shared_modules.optional_services import (
+    get_audio_service,
+    get_backlight_service,
+)
 from ignis.window_manager import WindowManager
 
-audio = AudioService.get_default()
-backlight = BacklightService.get_default()
+audio = get_audio_service()
+backlight = get_backlight_service()
 window_manager = WindowManager.get_default()
 
 
@@ -31,7 +33,7 @@ class QuickSliders(widgets.Box):
             )
             children.append(volume_box)
 
-        if backlight.available:
+        if backlight is not None and backlight.available:
             self.backlight_slider = widgets.Scale(
                 min=0,
                 max=100,
@@ -61,7 +63,7 @@ class QuickSliders(widgets.Box):
         if audio.speaker:
             audio.speaker.connect("notify::volume", self._on_volume_changed)
             audio.speaker.connect("notify::is-muted", self._on_volume_changed)
-        if backlight.available:
+        if backlight is not None and backlight.available:
             backlight.connect("notify::brightness", self._on_brightness_changed)
 
     def _on_volume_changed(self, stream, *_):
