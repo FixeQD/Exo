@@ -85,136 +85,109 @@ https://github.com/user-attachments/assets/78e35d82-5fe9-4986-b545-80fc59bc4784
 
 ---
 
-## 🚀 Installation
+## 🚀 Installation with Nix
 
-### Automatic Installation (Recommended)
+Exo ships a [Hjem](https://github.com/feel-co/hjem) module.
 
-The installer script automatically handles cloning, dependency installation, and configuration for Arch-based, Fedora-based, and Ubuntu-based distributions.
-
-Exo works best on **Arch** and many dependencies are known to have troubles installing on other distros, use at your own risk.
-
-```bash
-# Install prerequisites
-sudo apt install curl git python3  # For Debian/Ubuntu
-sudo dnf install curl git python3  # For Fedora
-sudo pacman -S curl git python3    # For Arch
-
-# Download and run installer
-curl -sSL https://raw.githubusercontent.com/debuggyo/Exo/main/exoinstall.py -o exoinstall.py && python3 exoinstall.py
+```nix
+inputs.exo.url = "github:FixeQD/Exo";
 ```
 
-The installer will:
-- Install all required dependencies for your distribution
-- Clone Exo and set up configuration files
-- Configure Matugen templates
-- Set up GTK theme
-- Add a basic Niri/Hyprland config set up to run Exo
-
----
-
-## 🔄 Updating and Uninstalling
-
-### Updating
-
-Run the installer script again to update Exo:
-
-```bash
-# If installed as system command
-exoupdate
-
-# Otherwise
-python3 exoinstall.py
+```nix
+{
+  hjem = {
+    extraModules = [ inputs.exo.hjemModules.default ];
+    users.fixeq = {
+      enable = true;
+      exo = {
+        enable = true;
+        userSettings.clobber = false;
+        compositor = {
+          enable = true;
+          type = "hyprland"; # "niri", "custom" or "none"
+        };
+        settings = {
+          appearance.wallcolors = {
+            wallpaper_path = "/home/fixeq/Pictures/wallpaper.png";
+            color_scheme = "tonal-spot";
+            dark_mode = true;
+            auto_dark = {
+              enabled = true;
+              start_hour = 22;
+              end_hour = 6;
+            };
+          };
+          interface.bar = {
+            side = "bottom";
+            floating = true;
+            centered = true;
+          };
+          interface.bar2.enabled = false;
+          interface.launcher.layout = "grid";
+          services.recorder.record_audio = false;
+        };
+      };
+    };
+  };
+}
 ```
 
-### Uninstalling
+### Options
 
-Select "Uninstall Exo" from the script's main menu. The uninstaller will:
-- Remove `~/.config/ignis` and `~/.config/matugen` folders
-- Remove the `exoupdate` command from `/usr/local/bin/`
-- Remove Niri/Hyprland config files copied by the installer
-- Remove the default wallpaper from `~/Pictures/Wallpapers`
+Every path, command and key binding in the generated files is an option.
 
-**Note:** The uninstaller will NOT remove installed dependencies or `.bak` backup files.
+| Option | Default |
+| --- | --- |
+| `commands.*` | from `exo.package` |
+| `ignis.directory` | `"ignis"` |
+| `userSettings.fileName` | `"user_settings.json"` |
+| `userSettings.clobber` | `false` |
+| `wallpaper` / `wallpaperTarget` | `null` / `"Pictures/Wallpapers/default.png"` |
+| `sessionVariables` | cursor theme and size |
+| `terminal.name` / `terminal.package` | `"ghostty"` / `null` |
+| `fileManager.name` / `fileManager.package` | `"nautilus"` / `null` |
+| `tools` | the tools Exo needs, Hyprland-only ones off unless a Hyprland fragment is generated |
+| `runtimePackages` / `extraPackages` | above plus `ignis` / `[]` |
+| `kitty.enable` | `false` |
+| `kitty.directory` / `fileName` / `includes` | `"kitty"` / `"kitty.conf"` / `[ "colors.conf" ]` |
+| `matugen.directory` / `templatesDirectory` / `configFileName` | `"matugen"` / `"templates"` / `"config.toml"` |
+| `compositor.autostart` | `commands.init` + wallpaper daemon |
+| `compositor.hyprland.directory` / `fileName` | `"hypr"` / `"hypr/exo.conf"` |
+| `compositor.hyprland.sources` | `[ "colors.conf" ]` |
+| `compositor.hyprland.variables` | `$terminal`, `$fileManager`, `$menu` |
+| `compositor.hyprland.environment` | `sessionVariables` |
+| `compositor.hyprland.bindings` / `extraConfig` | Exo's defaults / `""` |
+| `compositor.niri.directory` / `fileName` | `"niri"` / `"niri/exo.kdl"` |
+| `compositor.niri.wrapBindings` / `bindings` | `true` / Exo's defaults |
 
----
-
-## 🔧 Manual Installation
-
-If the automatic installer doesn't support your distribution, you can install manually.
-
-### 1. Install Dependencies
-
-Install all dependencies listed above using your distribution's package manager.
-
-### 2. Clone and Copy Configuration
-
-```bash
-# Create ignis config directory if needed
-mkdir -p ~/.config/ignis
-
-# Clone repository
-git clone https://github.com/debuggyo/Exo
-cd Exo
-
-# Copy configuration files
-cp -r ignis ~/.config/
-cp -r matugen ~/.config/
-touch ~/.config/ignis/user_settings.json
+```nix
+exo = {
+  commands.lock = "swaylock";
+  compositor.hyprland.sources = [
+    "colors.conf"
+    "exo-extra.conf"
+  ];
+  tools.slurp.enable = false;
+  tools.pipewire.package = config.programs.pipewire.package;
+};
 ```
 
-### 3. Configure Matugen
+Compositors without a renderer: write the fragment yourself.
 
-Create the templates directory:
-```bash
-mkdir -p ~/.config/matugen/templates/
+```nix
+exo.compositor = {
+  enable = true;
+  type = "custom";
+  custom = {
+    fileName = "hypr/exo-extra.conf";
+    text = ''
+      # your compositor's Exo integration
+    '';
+  };
+};
 ```
 
-Create `~/.config/matugen/templates/colors.scss` with:
-```scss
-<* for name, value in colors *>
-    ${{name}}: {{value.default.hex}};
-<* endfor *>
-```
-
-Create or edit `~/.config/matugen/config.toml` and add:
-```toml
-[config.wallpaper]
-command = "swww"
-arguments = ["img", "--transition-type", "simple"]
-set = true
-
-[templates.ignis]
-input_path = './templates/colors.scss'
-output_path = '~/.config/ignis/colors.scss'
-```
-
-Optional: Install additional [Matugen Themes](https://github.com/InioX/matugen-themes/tree/main?tab=readme-ov-file#gtk)
-
-### 4. Set GTK Theme
-
-```bash
-gsettings set org.gnome.desktop.interface gtk-theme "adw-gtk3"
-```
-
-### 5. Set Initial Wallpaper
-
-```bash
-matugen image /path/to/your/wallpaper
-```
-
-### 6. Configure Compositor Autostart
-
-**For Niri** (`~/.config/niri/config.kdl`):
-```kdl
-spawn-at-startup "ignis" "init"
-spawn-at-startup "swww-daemon"
-```
-
-**For Hyprland** (`~/.config/hypr/hyprland.conf`):
-```conf
-exec-once = ignis init
-exec-once = swww-daemon
-```
+Exo writes only its own fragment. Append raw compositor text with `exo.compositor.{hyprland,niri}.extraConfig`, or generate nothing with `compositor.type = "none"`.
 
 ---
 
