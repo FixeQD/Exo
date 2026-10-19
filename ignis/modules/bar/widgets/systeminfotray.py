@@ -2,10 +2,11 @@ import asyncio
 from ignis import widgets
 from ignis.services.system_tray import SystemTrayService, SystemTrayItem
 from modules.shared_modules.optional_services import (
+    get_audio_service,
     get_bluetooth_service,
     get_network_service,
+    watch,
 )
-from ignis.services.audio import AudioService
 from ignis.window_manager import WindowManager
 from gi.repository import Gtk
 from user_settings import user_settings
@@ -114,7 +115,7 @@ class SystemInfoTray:
 
         self.network_service = get_network_service()
         self.bluetooth_service = get_bluetooth_service()
-        self.audio_service = AudioService.get_default()
+        self.audio_service = get_audio_service()
 
         self.main_container = widgets.Box(css_classes=["system-info-tray"])
 
@@ -150,11 +151,12 @@ class SystemInfoTray:
         button_content.append(self.battery_widget.widget())
 
         if self.network_service is not None:
-            self.network_service.wifi.connect("notify::is-connected", self._update_ui)
-            self.network_service.ethernet.connect(
-                "notify::is-connected", self._update_ui
-            )
-            self.network_service.vpn.connect("notify::is-connected", self._update_ui)
+            for part in (
+                self.network_service.wifi,
+                self.network_service.ethernet,
+                self.network_service.vpn,
+            ):
+                watch(part, self._update_ui)
 
         if self.bluetooth_service is not None:
             self.bluetooth_service.connect("notify::powered", self._update_ui)

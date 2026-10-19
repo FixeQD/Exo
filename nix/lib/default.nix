@@ -34,13 +34,20 @@ in rec {
 
   renderHyprlandSources = sources: concatStringsSep "\n" (map (source: "source = ${source}") sources);
 
-  # An autostart entry is either a command string or an argv list.
+  # A command entry is either a command string or an argv list.
   renderArgs = entry:
     concatStringsSep " " (map (arg: "\"${arg}\"") (
       if builtins.isList entry
       then entry
       else [entry]
     ));
+
+  renderNiriArgs = entry:
+    renderArgs (
+      if builtins.isList entry
+      then entry
+      else filter (arg: arg != "") (splitString " " entry)
+    );
 
   renderHyprlandAutostart = commands: concatStringsSep "\n" (map (command: "exec-once = ${renderArgs command}") commands);
 
@@ -52,7 +59,7 @@ in rec {
 
   renderHyprlandBindings = bindings: renderPairs "\n" (_: value: "bind = ${value}") bindings;
 
-  renderNiriAutostart = commands: concatStringsSep "\n" (map (command: "spawn-at-startup ${renderArgs command}") commands);
+  renderNiriAutostart = commands: concatStringsSep "\n" (map (command: "spawn-at-startup ${renderNiriArgs command}") commands);
 
   listFiles = dir: let
     entries = builtins.readDir (toString dir);

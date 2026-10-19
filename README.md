@@ -146,6 +146,8 @@ Every path, command and key binding in the generated files is an option.
 | `sessionVariables` | cursor theme and size |
 | `terminal.name` / `terminal.package` | `"ghostty"` / `null` |
 | `fileManager.name` / `fileManager.package` | `"nautilus"` / `null` |
+| `network.backend` | `"auto"` (NetworkManager, falling back to iwd) |
+| `services.*` | audio, recorder and dart-sass on; NetworkManager and gnome-bluetooth off |
 | `tools` | the tools Exo needs, Hyprland-only ones off unless a Hyprland fragment is generated |
 | `runtimePackages` / `extraPackages` | above plus `ignis` / `[]` |
 | `kitty.enable` | `false` |
@@ -162,6 +164,9 @@ Every path, command and key binding in the generated files is an option.
 
 ```nix
 exo = {
+  # "networkmanager", "iwd" or "none"
+  network.backend = "iwd";
+
   commands.lock = "swaylock";
   compositor.hyprland.sources = [
     "colors.conf"

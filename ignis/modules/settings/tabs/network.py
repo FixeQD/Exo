@@ -2,7 +2,7 @@ import asyncio
 import subprocess
 import os
 from ignis import widgets
-from modules.shared_modules.optional_services import get_network_service
+from modules.shared_modules.optional_services import get_network_service, watch
 from modules.m3components import Button
 from modules.settings.widgets import CategoryLabel, SettingsRow, SwitchRow
 from scripts import send_notification
@@ -24,7 +24,7 @@ class NetworkTab(widgets.Box):
             self.append(CategoryLabel("Network"))
             self.append(
                 widgets.Label(
-                    label="Network management requires NetworkManager, which is not available.",
+                    label="No network backend found. Install NetworkManager or iwd.",
                     css_classes=["settings-description"],
                     wrap=True,
                 )
@@ -75,10 +75,8 @@ class NetworkTab(widgets.Box):
             )
         )
 
-        self.network_service.wifi.connect("notify::enabled", self._on_property_changed)
-        self.network_service.ethernet.connect(
-            "notify::is-connected", self._on_property_changed
-        )
+        watch(self.network_service.wifi, self._on_property_changed)
+        watch(self.network_service.ethernet, self._on_property_changed)
 
         asyncio.create_task(self.update_ui())
 

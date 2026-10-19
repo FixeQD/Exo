@@ -176,12 +176,12 @@ in {
         type = types.lines;
         default = ''
           Mod+T { spawn "${exo.terminal.name}"; }
-          Mod+D { spawn "${exo.commands.launcher}"; }
-          Mod+L { spawn "${exo.commands.lock}"; }
+          Mod+D { spawn ${exoLib.renderNiriArgs exo.commands.launcher}; }
+          Mod+L { spawn ${exoLib.renderNiriArgs exo.commands.lock}; }
           Mod+E { spawn "${exo.fileManager.name}"; }
-          Mod+Escape { spawn "${exo.commands.powerMenu}"; }
-          Mod+I { spawn "${exo.commands.settings}"; }
-          Mod+A { spawn "${exo.commands.quickCenter}"; }
+          Mod+Escape { spawn ${exoLib.renderNiriArgs exo.commands.powerMenu}; }
+          Mod+I { spawn ${exoLib.renderNiriArgs exo.commands.settings}; }
+          Mod+A { spawn ${exoLib.renderNiriArgs exo.commands.quickCenter}; }
         '';
         description = "Raw Niri bindings written into the fragment.";
       };

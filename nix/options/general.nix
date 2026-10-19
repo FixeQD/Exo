@@ -122,6 +122,23 @@ in {
       description = "Ignis executable package, built with the services enabled below.";
     };
 
+    network = {
+      backend = mkOption {
+        type = types.enum [
+          "auto"
+          "networkmanager"
+          "iwd"
+          "none"
+        ];
+        default = "auto";
+        defaultText = "networkmanager, falling back to iwd";
+        description = ''
+          Which network stack the Settings window drives. `auto` prefers
+          NetworkManager and falls back to iwd; `none` hides the network tab.
+        '';
+      };
+    };
+
     services = {
       audio = mkOption {
         type = types.bool;
@@ -130,7 +147,8 @@ in {
       };
       network = mkOption {
         type = types.bool;
-        default = false;
+        default = cfg.network.backend == "auto" || cfg.network.backend == "networkmanager";
+        defaultText = "true unless exo.network.backend is \"iwd\"";
         description = "Build Ignis with the NetworkManager service. Leave off when the network is managed by iwd or networkd.";
       };
       recorder = mkOption {
@@ -298,6 +316,9 @@ in {
       (mkIf cfg.userSettings.reset {
         EXO_RESET_USER_SETTINGS = "1";
       })
+      {
+        EXO_NETWORK_BACKEND = cfg.network.backend;
+      }
     ];
 
     files."${cfg.wallpaperTarget}" = mkIf (cfg.wallpaper != null) {

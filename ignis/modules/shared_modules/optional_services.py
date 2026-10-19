@@ -1,3 +1,6 @@
+import os
+
+
 def optional_service(module, name):
     try:
         return getattr(__import__(module, fromlist=[name]), name)
@@ -6,7 +9,33 @@ def optional_service(module, name):
 
 
 def get_network_service():
-    return _service("ignis.services.network", "NetworkService")
+    backend = os.environ.get("EXO_NETWORK_BACKEND", "auto").strip().lower()
+
+    if backend == "none":
+        return None
+
+    if backend != "iwd":
+        service = _service("ignis.services.network", "NetworkService")
+        if service is not None:
+            return service
+        if backend == "networkmanager":
+            return None
+
+    from modules.shared_modules.iwd import get_iwd_network_service
+
+    return get_iwd_network_service()
+
+
+def watch(service, callback):
+    if hasattr(service, "connect"):
+        try:
+            service.connect("changed", callback)
+            return
+        except (TypeError, AttributeError):
+            pass
+
+    for prop in ("enabled", "is-connected"):
+        service.connect(f"notify::{prop}", callback)
 
 
 def get_bluetooth_service():
