@@ -1,5 +1,7 @@
 <div align="center">
 
+<h1>This repo was moved to Tangled https://tangled.org/did:plc:3tlbzn3zpelmcqj6unk4yjg4</h1>
+
 ![Exo](https://github.com/user-attachments/assets/ca159dea-aa7c-4d52-bc65-9129a8c1becf)
 
 **A Material 3 inspired desktop shell for Niri and Hyprland**
